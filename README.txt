@@ -1,0 +1,2 @@
+27 test cases are given to you and you can use "make check" to see how many test cases passed.
+Test 1,2,3,5,6 is example cases for task 1, and example cases for task 2, 3 will be update later.Other cases are designed for multiple aspect, suck as priority, donate, mlfqs etc. Some of them are useful, while some are not. For example, all cases related to mlfqs are of no use. But we also give it to you in case you want to make the Pintos better.
