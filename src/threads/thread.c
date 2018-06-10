@@ -302,6 +302,7 @@ thread_exit (void)
 
 #ifdef USERPROG
   process_exit ();
+  // printf("done USERPROG\n");
 #endif
 
   /* Remove thread from all threads list, set our status to dying,
@@ -595,6 +596,16 @@ schedule (void)
 void acquire_filesys_lock()
 {
   lock_acquire(&filesys_lock);
+}
+
+bool try_acquire_filesys_lock()
+{
+  return lock_try_acquire(&filesys_lock);
+}
+
+bool filesys_lock_held_by_current_thread()
+{
+  return lock_held_by_current_thread(&filesys_lock);
 }
 
 void release_filesys_lock()

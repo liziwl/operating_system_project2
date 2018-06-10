@@ -50,12 +50,12 @@ process_execute (const char *file_name)
   free(f_name);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
-
-  sema_down(&thread_current()->child_lock);
-
-  if(!thread_current()->success)
-    return -1;
-
+  else
+  {
+    sema_down(&thread_current()->child_lock);
+    if (!thread_current()->success)
+      return -1;
+  }
   return tid;
 }
 
@@ -81,6 +81,8 @@ start_process (void *file_name_)
   if (!success) {
     //printf("%d %d\n",thread_current()->tid, thread_current()->parent->tid);
     thread_current()->parent->success=false;
+    ASSERT(thread_current()->parent->exit_error==-100)
+    // thread_current()->parent->exit_error=-1; // exit_error now should be -100 handle later
     sema_up(&thread_current()->parent->child_lock);
     thread_exit();
   }
@@ -152,16 +154,25 @@ process_exit (void)
   uint32_t *pd;
 
 
-    if(cur->exit_error==-100)
-      exit_proc(-1);
+    if(cur->exit_error==-100){
+      exit_proc(-1);      
+      NOT_REACHED ();
+    }
 
     int exit_code = cur->exit_error;
     printf("%s: exit(%d)\n",cur->name,exit_code);
+
+    if (true == filesys_lock_held_by_current_thread())
+    {
+      printf("release_filesys_lock\n"); // for debug.
+      release_filesys_lock();
+    }
 
     acquire_filesys_lock();
     file_close(thread_current()->self);
     close_all_files(&thread_current()->files);
     release_filesys_lock();
+    // printf("closed all\n");
 
   
   /* Destroy the current process's page directory and switch back
