@@ -18,6 +18,10 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+
+# define WORD_SIZE 4
+
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -40,10 +44,10 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  char *save_ptr;
+  char *temp_ptr;
   f_name = malloc(strlen(file_name)+1);
   strlcpy (f_name, file_name, strlen(file_name)+1);
-  f_name = strtok_r (f_name," ",&save_ptr);
+  f_name = strtok_r (f_name," ",&temp_ptr);
   /* Create a new thread to execute FILE_NAME. */
   //printf("%d\n", thread_current()->tid);
   tid = thread_create (f_name, PRI_DEFAULT, start_process, fn_copy);
@@ -305,8 +309,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   char * fn_cp = malloc (strlen(file_name)+1);
   strlcpy(fn_cp, file_name, strlen(file_name)+1);
   
-  char * save_ptr;
-  fn_cp = strtok_r(fn_cp," ",&save_ptr);
+  char * temp_ptr;
+  fn_cp = strtok_r(fn_cp," ",&temp_ptr);
 
   file = filesys_open (fn_cp);
 
@@ -536,58 +540,61 @@ setup_stack (void **esp, char * file_name)
         palloc_free_page (kpage);
     }
 
-  char *token, *save_ptr;
-  int argc = 0,i;
+  char *token, *temp_ptr;
+  int argc = 0;
 
-  char * copy = malloc(strlen(file_name)+1);
-  strlcpy (copy, file_name, strlen(file_name)+1);
+  char * filename_cp = malloc(strlen(file_name)+1);
+  strlcpy (filename_cp, file_name, strlen(file_name)+1);
 
-
-  for (token = strtok_r (copy, " ", &save_ptr); token != NULL;
-    token = strtok_r (NULL, " ", &save_ptr))
+  //calculate argc
+  token = strtok_r (filename_cp, " ", &temp_ptr);
+  while(token){
+    token = strtok_r (NULL, " ", &temp_ptr);
     argc++;
-
-
+  }
+    
   int *argv = calloc(argc,sizeof(int));
 
-  for (token = strtok_r (file_name, " ", &save_ptr),i=0; token != NULL;
-    token = strtok_r (NULL, " ", &save_ptr),i++)
-    {
+  int i;
+  token = strtok_r (file_name, " ", &temp_ptr);
+  for (i=0; ; i++){
+    if(token){
       *esp -= strlen(token) + 1;
       memcpy(*esp,token,strlen(token) + 1);
-
       argv[i]=*esp;
+      token = strtok_r (NULL, " ", &temp_ptr);
+    }else{
+      break;
     }
-
-  while((int)*esp%4!=0)
-  {
-    *esp-=sizeof(char);
-    char x = 0;
-    memcpy(*esp,&x,sizeof(char));
   }
 
-  int zero = 0;
+  // word align
+  *esp -= ((unsigned)*esp % WORD_SIZE);
 
-  *esp-=sizeof(int);
-  memcpy(*esp,&zero,sizeof(int));
+  //null ptr sentinel: null at argv[argc]
+   *esp-=sizeof(int);
 
+  //push address
   for(i=argc-1;i>=0;i--)
   {
     *esp-=sizeof(int);
     memcpy(*esp,&argv[i],sizeof(int));
   }
 
-  int pt = *esp;
+  //push argv address
+  int tmp = *esp;
   *esp-=sizeof(int);
-  memcpy(*esp,&pt,sizeof(int));
+  memcpy(*esp,&tmp,sizeof(int));
 
+  //push argc
   *esp-=sizeof(int);
   memcpy(*esp,&argc,sizeof(int));
 
+  //return address
   *esp-=sizeof(int);
-  memcpy(*esp,&zero,sizeof(int));
+  memcpy(*esp,&argv[argc],sizeof(int));
 
-  free(copy);
+  free(filename_cp);
   free(argv);
 
   return success;
