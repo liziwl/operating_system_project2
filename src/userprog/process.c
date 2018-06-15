@@ -531,17 +531,24 @@ setup_stack (void **esp, char * file_name)
     }
 
   char *token, *temp_ptr;
-  int argc = 0;
 
   char * filename_cp = malloc(strlen(file_name)+1);
   strlcpy (filename_cp, file_name, strlen(file_name)+1);
 
-  //calculate argc
-  token = strtok_r (filename_cp, " ", &temp_ptr);
-  while(token){
-    token = strtok_r (NULL, " ", &temp_ptr);
-    argc++;
+  // calculate argc
+  enum intr_level old_level = intr_disable();
+  int argc=1;
+  bool is_lastone_space=false;  //keep a record that if the last char is space. for the use of two-space situation
+  for(int j=0;j!=strlen(file_name); j++){
+    if(file_name[j] == ' '){ 
+      if(!is_lastone_space)
+        argc++;
+      is_lastone_space=true;   
+    }
+    else
+      is_lastone_space=false;
   }
+  intr_set_level (old_level);
     
   int *argv = calloc(argc,sizeof(int));
 
