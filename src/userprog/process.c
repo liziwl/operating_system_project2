@@ -37,6 +37,7 @@ process_execute (const char *file_name)
   char *fn_copy;
   char *f_name;
   tid_t tid;
+  struct thread * cur_t = thread_current();
   
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -49,15 +50,15 @@ process_execute (const char *file_name)
   strlcpy (f_name, file_name, strlen(file_name)+1);
   f_name = strtok_r (f_name," ",&temp_ptr);
   /* Create a new thread to execute FILE_NAME. */
-  //printf("%d\n", thread_current()->tid);
+  //printf("%d\n", cur_t->tid);
   tid = thread_create (f_name, PRI_DEFAULT, start_process, fn_copy);
   free(f_name);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   else
   {
-    sema_down(&thread_current()->child_lock);
-    if (!thread_current()->success)
+    sema_down(&cur_t->child_lock);
+    if (!cur_t->success)
       return -1;
   }
   return tid;
@@ -82,19 +83,22 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
+
+  struct thread * cur_t = thread_current();
+
   if (!success) {
-    //printf("%d %d\n",thread_current()->tid, thread_current()->parent->tid);
-    thread_current()->parent->success=false;
-    ASSERT(thread_current()->parent->exit_error==-100)
+    //printf("%d %d\n",cur_t->tid, cur_t->parent->tid);
+    cur_t->parent->success=false;
+    ASSERT(cur_t->parent->exit_error==-100)
     /* exit_error now should be -100 handle later,
     becasuse process start fail, and  exit_error init value is -100. */
     thread_exit();
   }
   else
   {
-    thread_current()->parent->success=true;
+    cur_t->parent->success=true;
   }
-  sema_up(&thread_current()->parent->child_lock);
+  sema_up(&cur_t->parent->child_lock);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -119,7 +123,7 @@ int
 process_wait (tid_t child_tid) 
 {
   //printf("Wait : %s %d\n",thread_current()->name, child_tid);
-  struct thread *current_thread = thread_current ();
+  struct thread *cur_t = thread_current ();
 
   enum intr_level old_level = intr_disable();
   struct list_elem *tmp_e = find_child_proc(child_tid);
@@ -129,10 +133,10 @@ process_wait (tid_t child_tid)
   if(!ch || !tmp_e)
     return -1;
 
-  current_thread->waitingon = ch->tid;
+  cur_t->waitingon = ch->tid;
     
   if(!ch->used)
-    sema_down(&current_thread->child_lock);
+    sema_down(&cur_t->child_lock);
 
   int temp_exit_code = ch->exit_error;
   list_remove(tmp_e);
@@ -144,17 +148,17 @@ process_wait (tid_t child_tid)
 void
 process_exit (void)
 {
-  struct thread *cur = thread_current ();
+  struct thread *cur_t = thread_current ();
   uint32_t *pd;
 
 
-    if(cur->exit_error==-100){
+    if(cur_t->exit_error==-100){
       exit_proc(-1);      
       NOT_REACHED ();
     }
 
-    int exit_code = cur->exit_error;
-    printf("%s: exit(%d)\n",cur->name,exit_code);
+    int exit_code = cur_t->exit_error;
+    printf("%s: exit(%d)\n",cur_t->name,exit_code);
 
     if (true == filesys_lock_held_by_current_thread())
     {
@@ -162,26 +166,28 @@ process_exit (void)
       release_filesys_lock();
     }
 
+    enum intr_level old_level = intr_disable();
     acquire_filesys_lock();
-    file_close(thread_current()->self);
-    close_all_files(&thread_current()->files);
+    file_close(cur_t->self);
+    close_all_files(&cur_t->files);
     release_filesys_lock();
+    intr_set_level(old_level);
     // printf("closed all\n");
 
   
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  pd = cur->pagedir;
+  pd = cur_t->pagedir;
   if (pd != NULL) 
     {
       /* Correct ordering here is crucial.  We must set
-         cur->pagedir to NULL before switching page directories,
+         cur_t->pagedir to NULL before switching page directories,
          so that a timer interrupt can't switch back to the
          process page directory.  We must activate the base page
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
-      cur->pagedir = NULL;
+      cur_t->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
