@@ -174,5 +174,5 @@ void acquire_filesys_lock();
 bool try_acquire_filesys_lock();
 bool filesys_lock_held_by_current_thread();
 void release_filesys_lock();
-
+struct list_elem *find_child_proc(tid_t child_tid);
 #endif

@@ -86,15 +86,15 @@ start_process (void *file_name_)
     //printf("%d %d\n",thread_current()->tid, thread_current()->parent->tid);
     thread_current()->parent->success=false;
     ASSERT(thread_current()->parent->exit_error==-100)
-    // thread_current()->parent->exit_error=-1; // exit_error now should be -100 handle later
-    sema_up(&thread_current()->parent->child_lock);
+    /* exit_error now should be -100 handle later,
+    becasuse process start fail, and  exit_error init value is -100. */
     thread_exit();
   }
   else
   {
     thread_current()->parent->success=true;
-    sema_up(&thread_current()->parent->child_lock);
   }
+  sema_up(&thread_current()->parent->child_lock);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -119,35 +119,25 @@ int
 process_wait (tid_t child_tid) 
 {
   //printf("Wait : %s %d\n",thread_current()->name, child_tid);
-  struct list_elem *e;
+  struct thread *current_thread = thread_current ();
 
-  struct child *ch=NULL;
-  struct list_elem *e1=NULL;
+  enum intr_level old_level = intr_disable();
+  struct list_elem *tmp_e = find_child_proc(child_tid);
+  struct child *ch = list_entry (tmp_e, struct child, elem);
+  intr_set_level (old_level);
 
-  for (e = list_begin (&thread_current()->child_proc); e != list_end (&thread_current()->child_proc);
-           e = list_next (e))
-        {
-          struct child *f = list_entry (e, struct child, elem);
-          if(f->tid == child_tid)
-          {
-            ch = f;
-            e1 = e;
-          }
-        }
-
-
-  if(!ch || !e1)
+  if(!ch || !tmp_e)
     return -1;
 
-  thread_current()->waitingon = ch->tid;
+  current_thread->waitingon = ch->tid;
     
   if(!ch->used)
-    sema_down(&thread_current()->child_lock);
+    sema_down(&current_thread->child_lock);
 
-  int temp = ch->exit_error;
-  list_remove(e1);
+  int temp_exit_code = ch->exit_error;
+  list_remove(tmp_e);
   
-  return temp;
+  return temp_exit_code;
 }
 
 /* Free the current process's resources. */

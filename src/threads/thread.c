@@ -593,22 +593,26 @@ schedule (void)
   thread_schedule_tail (prev);
 }
 
-void acquire_filesys_lock()
+void
+acquire_filesys_lock()
 {
   lock_acquire(&filesys_lock);
 }
 
-bool try_acquire_filesys_lock()
+bool
+try_acquire_filesys_lock()
 {
   return lock_try_acquire(&filesys_lock);
 }
 
-bool filesys_lock_held_by_current_thread()
+bool
+filesys_lock_held_by_current_thread()
 {
   return lock_held_by_current_thread(&filesys_lock);
 }
 
-void release_filesys_lock()
+void
+release_filesys_lock()
 {
   lock_release(&filesys_lock);
 }
@@ -631,11 +635,31 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
-bool cmp_waketick(struct list_elem *first, struct list_elem *second, void *aux)
+bool
+cmp_waketick(struct list_elem *first, struct list_elem *second, void *aux)
 {
   struct thread *fthread = list_entry (first, struct thread, elem);
   struct thread *sthread = list_entry (second, struct thread, elem);
 
   return fthread->waketick < sthread->waketick;
 
+}
+
+struct list_elem *
+find_child_proc(tid_t child_tid)
+{
+  ASSERT (intr_get_level () == INTR_OFF);
+
+  struct list_elem *tmp_e;
+
+  for (tmp_e = list_begin (&thread_current()->child_proc); tmp_e != list_end (&thread_current()->child_proc);
+          tmp_e = list_next (tmp_e))
+      {
+        struct child *f = list_entry (tmp_e, struct child, elem);
+        if(f->tid == child_tid)
+        {
+          return tmp_e;
+        }
+      }
+  return NULL;
 }
