@@ -170,9 +170,6 @@ exit_proc(int status)
         }
 	thread_current()->exit_status = status;
 
-	if(thread_current()->parent->waiting_child == thread_current()->tid)
-		sema_up(&thread_current()->parent->child_lock);
-
 	thread_exit();
 }
 
@@ -369,8 +366,9 @@ syscall_write(struct intr_frame *f)
 	int *p = f->esp;
 	int ret;
 
-	is_valid_addr(p+7);
-	is_valid_addr(*(p+6));
+	is_valid_addr(p+7); // size
+	is_valid_addr(*(p+6)); // buffer
+	// if true means writing to the console
 	if(*(p+5)==1)
 	{
 		putbuf(*(p+6),*(p+7));
@@ -378,8 +376,11 @@ syscall_write(struct intr_frame *f)
 	}
 	else
 	{
+		// enum intr_level old_level = intr_disable();
 		struct proc_file* fptr = search_fd(&thread_current()->opened_files, *(p+5));
-		if(fptr==NULL)
+		// intr_set_level (old_level);
+
+		if(fptr == NULL)
 			ret=-1;
 		else
 		{
