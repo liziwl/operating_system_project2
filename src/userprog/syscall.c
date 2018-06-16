@@ -156,21 +156,21 @@ exit_proc(int status)
 {
 	//printf("Exit : %s %d %d\n",thread_current()->name, thread_current()->tid, status);
 	struct list_elem *e;
-	struct child *f;
+	struct child_process *f;
 
-      for (e = list_begin (&thread_current()->parent->child_proc); e != list_end (&thread_current()->parent->child_proc);
+      for (e = list_begin (&thread_current()->parent->children_list); e != list_end (&thread_current()->parent->children_list);
            e = list_next (e))
         {
-          f = list_entry (e, struct child, elem);
+          f = list_entry (e, struct child_process, child_elem);
           if(f->tid == thread_current()->tid)
           {
-          	f->used = true;
-          	f->exit_error = status;
+          	f->if_waited = true;
+          	f->exit_status = status;
           }
         }
-	thread_current()->exit_error = status;
+	thread_current()->exit_status = status;
 
-	if(thread_current()->parent->waitingon == thread_current()->tid)
+	if(thread_current()->parent->waiting_child == thread_current()->tid)
 		sema_up(&thread_current()->parent->child_lock);
 
 	thread_exit();
@@ -310,7 +310,7 @@ syscall_open(struct intr_frame *f)
 		pfile->ptr = fptr;
 		pfile->fd = thread_current()->fd_count;
 		thread_current()->fd_count++;
-		list_push_back (&thread_current()->files, &pfile->elem);
+		list_push_back (&thread_current()->opened_files, &pfile->elem);
 		ret = pfile->fd;
 	}
 
@@ -325,7 +325,7 @@ syscall_filesize(struct intr_frame *f)
 
 	is_valid_addr(p+1);
 	lock_acquire(&filesys_lock);
-	ret = file_length (search_fd(&thread_current()->files, *(p+1))->ptr);
+	ret = file_length (search_fd(&thread_current()->opened_files, *(p+1))->ptr);
 	lock_release(&filesys_lock);
 
 	return ret;
@@ -349,7 +349,7 @@ syscall_read(struct intr_frame *f)
 	}
 	else
 	{
-		struct proc_file* fptr = search_fd(&thread_current()->files, *(p+5));
+		struct proc_file* fptr = search_fd(&thread_current()->opened_files, *(p+5));
 		if(fptr==NULL)
 			ret=-1;
 		else
@@ -378,7 +378,7 @@ syscall_write(struct intr_frame *f)
 	}
 	else
 	{
-		struct proc_file* fptr = search_fd(&thread_current()->files, *(p+5));
+		struct proc_file* fptr = search_fd(&thread_current()->opened_files, *(p+5));
 		if(fptr==NULL)
 			ret=-1;
 		else
@@ -399,7 +399,7 @@ syscall_seek(struct intr_frame *f)
 
 	is_valid_addr(p+5);
 	lock_acquire(&filesys_lock);
-	file_seek(search_fd(&thread_current()->files, *(p+4))->ptr,*(p+5));
+	file_seek(search_fd(&thread_current()->opened_files, *(p+4))->ptr,*(p+5));
 	lock_release(&filesys_lock);
 }
 
@@ -411,7 +411,7 @@ syscall_tell(struct intr_frame *f)
 
 	is_valid_addr(p+1);
 	lock_acquire(&filesys_lock);
-	ret = file_tell(search_fd(&thread_current()->files, *(p+1))->ptr);
+	ret = file_tell(search_fd(&thread_current()->opened_files, *(p+1))->ptr);
 	lock_release(&filesys_lock);
 
 	return ret;
@@ -424,6 +424,6 @@ syscall_close(struct intr_frame *f)
 
 	is_valid_addr(p+1);
 	lock_acquire(&filesys_lock);
-	clean_single_file(&thread_current()->files,*(p+1));
+	clean_single_file(&thread_current()->opened_files,*(p+1));
 	lock_release(&filesys_lock);
 }

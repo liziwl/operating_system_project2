@@ -90,9 +90,9 @@ start_process (void *file_name_)
   if (!success) {
     //printf("%d %d\n",cur_t->tid, cur_t->parent->tid);
     cur_t->parent->success=false;
-    ASSERT(cur_t->parent->exit_error==-100)
-    /* exit_error now should be -100 handle later,
-    becasuse process start fail, and  exit_error init value is -100. */
+    ASSERT(cur_t->parent->exit_status==-100)
+    /* exit_status now should be -100 handle later,
+    becasuse process start fail, and  exit_status init value is -100. */
     thread_exit();
   }
   else
@@ -128,18 +128,18 @@ process_wait (tid_t child_tid)
 
   enum intr_level old_level = intr_disable();
   struct list_elem *tmp_e = find_child_proc(child_tid);
-  struct child *ch = list_entry (tmp_e, struct child, elem);
+  struct child_process *ch = list_entry (tmp_e, struct child_process, child_elem);
   intr_set_level (old_level);
 
   if(!ch || !tmp_e)
     return -1;
 
-  cur_t->waitingon = ch->tid;
+  cur_t->waiting_child = ch->tid;
     
-  if(!ch->used)
+  if(!ch->if_waited)
     sema_down(&cur_t->child_lock);
 
-  int temp_exit_code = ch->exit_error;
+  int temp_exit_code = ch->exit_status;
   list_remove(tmp_e);
   
   return temp_exit_code;
@@ -152,12 +152,12 @@ process_exit (void)
   struct thread *cur_t = thread_current ();
   uint32_t *pd;
 
-  if(cur_t->exit_error==-100){
+  if(cur_t->exit_status==-100){
     exit_proc(-1);      
     NOT_REACHED ();
   }
 
-  int exit_code = cur_t->exit_error;
+  int exit_code = cur_t->exit_status;
   printf("%s: exit(%d)\n",cur_t->name,exit_code);
 
   if (true == lock_held_by_current_thread(&filesys_lock))
@@ -168,7 +168,7 @@ process_exit (void)
 
   // enum intr_level old_level = intr_disable();
   lock_acquire(&filesys_lock);
-  clean_all_files(&cur_t->files);
+  clean_all_files(&cur_t->opened_files);
   file_close(cur_t->self);
   lock_release(&filesys_lock);;
   // intr_set_level(old_level);

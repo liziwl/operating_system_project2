@@ -26,6 +26,10 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+
+
+struct lock filesys_lock; //a global lock on filesystem operations, to ensure thread safety. 
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -71,6 +75,7 @@ typedef int tid_t;
          dynamic allocation with malloc() or palloc_get_page()
          instead.
 
+
    The first symptom of either of these problems will probably be
    an assertion failure in thread_current(), which checks that
    the `magic' member of the running thread's `struct thread' is
@@ -82,6 +87,8 @@ typedef int tid_t;
    only because they are mutually exclusive: only a thread in the
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
+
+
 struct thread
   {
     /* Owned by thread.c. */
@@ -99,18 +106,18 @@ struct thread
 
     bool success;
     
-    int exit_error;
+    int exit_status;
 
-    struct list child_proc;
+    struct list children_list;
     struct thread* parent;
 
-    struct file *self;
+    struct file *self;  // its executable file
 
-    struct list files;
+    struct list opened_files;     //all the opened files
     int fd_count;
 
     struct semaphore child_lock;
-    int waitingon;
+    int waiting_child;  //pid of the child process it is currently waiting
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -121,11 +128,15 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
   };
 
-  struct child {
+  struct child_process {
       int tid;
-      struct list_elem elem;
-      int exit_error;
-      bool used;
+      struct list_elem child_elem;   // element of itself point to its parent's child_list
+      int exit_status;   //store its exit status to pass it to its parent 
+          
+      /*whether the child process has been waited()
+      according to the document: a process may wait for any given child at most once.
+      if_waited would be initialized to false*/
+      bool if_waited;
     };
 
 /* If false (default), use round-robin scheduler.
@@ -170,9 +181,9 @@ bool cmp_waketick(struct list_elem *first, struct list_elem *second, void *aux);
 
 #ifdef USERPROG
 /* Owned by userprog/exception.c. */
-void acquire_filesys_lock();
-bool try_acquire_filesys_lock();
-bool filesys_lock_held_by_current_thread();
-void release_filesys_lock();
-struct list_elem *find_child_proc(tid_t child_tid);
+// void acquire_filesys_lock();
+// bool try_acquire_filesys_lock();
+// bool filesys_lock_held_by_current_thread();
+// void release_filesys_lock();
+struct list_elem *find_children_list(tid_t child_tid);
 #endif

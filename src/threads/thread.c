@@ -38,7 +38,7 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
-struct lock filesys_lock;
+//struct lock filesys_lock;
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
@@ -189,11 +189,11 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-  struct child* c = malloc(sizeof(*c));
+  struct child_process* c = malloc(sizeof(*c));
   c->tid = tid;
-  c->exit_error = t->exit_error;
-  c->used = false;
-  list_push_back (&running_thread()->child_proc, &c->elem);
+  c->exit_status = t->exit_status;
+  c->if_waited = false;
+  list_push_back (&running_thread()->children_list, &c->child_elem);
 
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
@@ -310,8 +310,8 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
 
-    while(!list_empty(&thread_current()->child_proc)){
-      struct proc_file *f = list_entry (list_pop_front(&thread_current()->child_proc), struct child, elem);
+    while(!list_empty(&thread_current()->children_list)){
+      struct proc_file *f = list_entry (list_pop_front(&thread_current()->children_list), struct child_process, child_elem);
       free(f);
     }
 
@@ -487,13 +487,13 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-  list_init (&t->child_proc);
+  list_init (&t->children_list);
   t->parent = running_thread();
-  list_init (&t->files);
+  list_init (&t->opened_files);
   t->fd_count=2;
-  t->exit_error = -100;
+  t->exit_status = -100;
   sema_init(&t->child_lock,0);
-  t->waitingon=0;
+  t->waiting_child=0;
   t->self=NULL;
   list_push_back (&all_list, &t->allelem);
 }
@@ -594,29 +594,29 @@ schedule (void)
   thread_schedule_tail (prev);
 }
 
-void
-acquire_filesys_lock()
-{
-  lock_acquire(&filesys_lock);
-}
+// void
+// acquire_filesys_lock()
+// {
+//   lock_acquire(&filesys_lock);
+// }
 
-bool
-try_acquire_filesys_lock()
-{
-  return lock_try_acquire(&filesys_lock);
-}
+// bool
+// try_acquire_filesys_lock()
+// {
+//   return lock_try_acquire(&filesys_lock);
+// }
 
-bool
-filesys_lock_held_by_current_thread()
-{
-  return lock_held_by_current_thread(&filesys_lock);
-}
+// bool
+// filesys_lock_held_by_current_thread()
+// {
+//   return lock_held_by_current_thread(&filesys_lock);
+// }
 
-void
-release_filesys_lock()
-{
-  lock_release(&filesys_lock);
-}
+// void
+// release_filesys_lock()
+// {
+//   lock_release(&filesys_lock);
+// }
 
 /* Returns a tid to use for a new thread. */
 static tid_t
@@ -633,7 +633,7 @@ allocate_tid (void)
 }
 
 /* Offset of `stack' member within `struct thread'.
-   Used by switch.S, which can't figure it out on its own. */
+   if_waited by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 bool
@@ -653,10 +653,10 @@ find_child_proc(tid_t child_tid)
 
   struct list_elem *tmp_e;
 
-  for (tmp_e = list_begin (&thread_current()->child_proc); tmp_e != list_end (&thread_current()->child_proc);
+  for (tmp_e = list_begin (&thread_current()->children_list); tmp_e != list_end (&thread_current()->children_list);
           tmp_e = list_next (tmp_e))
       {
-        struct child *f = list_entry (tmp_e, struct child, elem);
+        struct child_process *f = list_entry (tmp_e, struct child_process, child_elem);
         if(f->tid == child_tid)
         {
           return tmp_e;
