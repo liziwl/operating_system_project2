@@ -101,9 +101,9 @@ syscall_handler (struct intr_frame *f UNUSED)
 		// 		f->eax = -1;
 		// 	else
 		// 	{
-		// 		acquire_filesys_lock();
+		// 		lock_acquire(&filesys_lock);
 		// 		f->eax = file_write (fptr->ptr, *(p+6), *(p+7));
-		// 		release_filesys_lock();
+		// 		lock_release(&filesys_lock);
 		// 	}
 		// }
 		f->eax = syscall_write(f);
@@ -129,7 +129,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 int
 exec_proc(char *file_name)
 {
-	acquire_filesys_lock();
+	lock_acquire(&filesys_lock);
 	char * fn_cp = malloc (strlen(file_name)+1);
 	  strlcpy(fn_cp, file_name, strlen(file_name)+1);
 	  
@@ -140,13 +140,13 @@ exec_proc(char *file_name)
 
 	  if(f==NULL)
 	  {
-	  	release_filesys_lock();
+	  	lock_release(&filesys_lock);
 	  	return -1;
 	  }
 	  else
 	  {
 	  	file_close(f);
-	  	release_filesys_lock();
+	  	lock_release(&filesys_lock);
 	  	return process_execute(file_name);
 	  }
 }
@@ -265,9 +265,9 @@ syscall_creat(struct intr_frame *f)
 
 	is_valid_addr(p+5);
 	is_valid_addr(*(p+4));
-	acquire_filesys_lock();
+	lock_acquire(&filesys_lock);
 	ret = filesys_create(*(p+4),*(p+5));
-	release_filesys_lock();
+	lock_release(&filesys_lock);
 
 	return ret;
 }
@@ -280,12 +280,12 @@ syscall_remove(struct intr_frame *f)
 
 	is_valid_addr(p+1);
 	is_valid_addr(*(p+1));
-	acquire_filesys_lock();
+	lock_acquire(&filesys_lock);
 	if(filesys_remove(*(p+1))==NULL)
 		ret = false;
 	else
 		ret = true;
-	release_filesys_lock();
+	lock_release(&filesys_lock);
 
 	return ret;
 }
@@ -299,9 +299,9 @@ syscall_open(struct intr_frame *f)
 	is_valid_addr(p+1);
 	is_valid_addr(*(p+1));
 
-	acquire_filesys_lock();
+	lock_acquire(&filesys_lock);
 	struct file* fptr = filesys_open (*(p+1));
-	release_filesys_lock();
+	lock_release(&filesys_lock);
 	if(fptr==NULL)
 		ret = -1;
 	else
@@ -324,9 +324,9 @@ syscall_filesize(struct intr_frame *f)
 	int ret;
 
 	is_valid_addr(p+1);
-	acquire_filesys_lock();
+	lock_acquire(&filesys_lock);
 	ret = file_length (search_fd(&thread_current()->files, *(p+1))->ptr);
-	release_filesys_lock();
+	lock_release(&filesys_lock);
 
 	return ret;
 }
@@ -354,9 +354,9 @@ syscall_read(struct intr_frame *f)
 			ret=-1;
 		else
 		{
-			acquire_filesys_lock();
+			lock_acquire(&filesys_lock);
 			ret = file_read (fptr->ptr, *(p+6), *(p+7));
-			release_filesys_lock();
+			lock_release(&filesys_lock);
 		}
 	}
 		
@@ -383,9 +383,9 @@ syscall_write(struct intr_frame *f)
 			ret=-1;
 		else
 		{
-			acquire_filesys_lock();
+			lock_acquire(&filesys_lock);
 			ret = file_write (fptr->ptr, *(p+6), *(p+7));
-			release_filesys_lock();
+			lock_release(&filesys_lock);
 		}
 	}
 		
@@ -398,9 +398,9 @@ syscall_seek(struct intr_frame *f)
 	int *p = f->esp;
 
 	is_valid_addr(p+5);
-	acquire_filesys_lock();
+	lock_acquire(&filesys_lock);
 	file_seek(search_fd(&thread_current()->files, *(p+4))->ptr,*(p+5));
-	release_filesys_lock();
+	lock_release(&filesys_lock);
 }
 
 int
@@ -410,9 +410,9 @@ syscall_tell(struct intr_frame *f)
 	int ret;
 
 	is_valid_addr(p+1);
-	acquire_filesys_lock();
+	lock_acquire(&filesys_lock);
 	ret = file_tell(search_fd(&thread_current()->files, *(p+1))->ptr);
-	release_filesys_lock();
+	lock_release(&filesys_lock);
 
 	return ret;
 }
@@ -423,7 +423,7 @@ syscall_close(struct intr_frame *f)
 	int *p = f->esp;
 
 	is_valid_addr(p+1);
-	acquire_filesys_lock();
+	lock_acquire(&filesys_lock);
 	clean_single_file(&thread_current()->files,*(p+1));
-	release_filesys_lock();
+	lock_release(&filesys_lock);
 }

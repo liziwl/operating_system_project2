@@ -160,17 +160,17 @@ process_exit (void)
   int exit_code = cur_t->exit_error;
   printf("%s: exit(%d)\n",cur_t->name,exit_code);
 
-  if (true == filesys_lock_held_by_current_thread())
+  if (true == lock_held_by_current_thread(&filesys_lock))
   {
     printf("release_filesys_lock\n"); // for debug.
-    release_filesys_lock();
+    lock_release(&filesys_lock);;
   }
 
   // enum intr_level old_level = intr_disable();
-  acquire_filesys_lock();
+  lock_acquire(&filesys_lock);
   clean_all_files(&cur_t->files);
   file_close(cur_t->self);
-  release_filesys_lock();
+  lock_release(&filesys_lock);;
   // intr_set_level(old_level);
   // printf("closed all\n");
   
@@ -292,7 +292,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
-  acquire_filesys_lock();
+  lock_acquire(&filesys_lock);
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL)
@@ -404,7 +404,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   
  done:
   /* We arrive here whether the load is successful or not. */
- release_filesys_lock();
+ lock_release(&filesys_lock);;
   return success;
 }
 

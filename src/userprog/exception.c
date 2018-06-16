@@ -154,10 +154,8 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  if (filesys_lock_held_by_current_thread())
-  {
-    release_filesys_lock();
-  }
+  if (lock_held_by_current_thread(&filesys_lock))
+    lock_release(&filesys_lock);
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
