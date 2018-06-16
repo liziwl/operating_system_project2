@@ -170,9 +170,9 @@ process_exit (void)
   lock_acquire(&filesys_lock);
   clean_all_files(&cur_t->opened_files);
   file_close(cur_t->self);
-  while(!list_empty(&thread_current()->child_proc))
+  while(!list_empty(&thread_current()->children_list))
   {
-    struct proc_file *f = list_entry (list_pop_front(&thread_current()->child_proc), struct child, elem);
+    struct proc_file *f = list_entry (list_pop_front(&thread_current()->children_list), struct child_process, child_elem);
     free(f);
   }
   lock_release(&filesys_lock);

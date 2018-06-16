@@ -301,7 +301,7 @@ thread_exit (void)
 {
   ASSERT (!intr_context ());
 
-  if(thread_current()->parent->waitingon == thread_current()->tid)
+  if(thread_current()->parent->waiting_child == thread_current()->tid)
 	  sema_up(&thread_current()->parent->child_lock);
 
 #ifdef USERPROG
