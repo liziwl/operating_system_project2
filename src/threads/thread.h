@@ -104,21 +104,15 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     int64_t waketick;
-
     bool success;
-    
     int exit_status;
-
     struct list children_list;
     struct thread* parent;
-
     struct file *self;  // its executable file
-
     struct list opened_files;     //all the opened files
     int fd_count;
-
     struct semaphore child_lock;
-    int waiting_child;  //pid of the child process it is currently waiting
+    struct child_process * waiting_child;  //pid of the child process it is currently waiting
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

@@ -300,9 +300,13 @@ void
 thread_exit (void) 
 {
   ASSERT (!intr_context ());
-
-  if(thread_current()->parent->waiting_child == thread_current()->tid)
-	  sema_up(&thread_current()->parent->child_lock);
+  enum intr_level old_level = intr_disable();
+  if (thread_current()->parent->waiting_child != NULL)
+  {
+    if (thread_current()->parent->waiting_child->tid == thread_current()->tid)
+      sema_up(&thread_current()->parent->child_lock);
+  }
+  intr_set_level(old_level);
 
 #ifdef USERPROG
   process_exit ();
@@ -491,7 +495,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->fd_count=2;
   t->exit_status = INIT_EXIT_STAT;
   sema_init(&t->child_lock,0);
-  t->waiting_child=0;
+  t->waiting_child=NULL;
   t->self=NULL;
   list_push_back (&all_list, &t->allelem);
 }

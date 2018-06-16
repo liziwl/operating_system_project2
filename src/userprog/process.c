@@ -134,10 +134,16 @@ process_wait (tid_t child_tid)
   if(!ch || !tmp_e)
     return -1;
 
-  cur_t->waiting_child = ch->tid;
+  cur_t->waiting_child = ch;
+  //cur_t->waiting_child = ch;
     
-  if(!ch->if_waited)
+  if(!ch->if_waited){
     sema_down(&cur_t->child_lock);
+  
+     //ch->if_waited=true;
+   }
+  // else    //if the child process has been waited
+  //   return -1;
 
   int temp_exit_code = ch->exit_status;
   list_remove(tmp_e);
