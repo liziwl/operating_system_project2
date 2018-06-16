@@ -172,7 +172,7 @@ process_exit (void)
   file_close(cur_t->self);
   while(!list_empty(&thread_current()->children_list))
   {
-    struct proc_file *f = list_entry (list_pop_front(&thread_current()->children_list), struct child_process, child_elem);
+    struct process_file *f = list_entry (list_pop_front(&thread_current()->children_list), struct child_process, child_elem);
     free(f);
   }
   lock_release(&filesys_lock);

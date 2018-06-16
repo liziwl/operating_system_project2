@@ -3,7 +3,7 @@
 
 #include "kernel/list.h"
 
-struct proc_file {
+struct process_file {
 	struct file* ptr;
 	int fd;
 	struct list_elem elem;
