@@ -36,7 +36,7 @@ tid_t
 process_execute (const char *file_name) 
 {
   char *fn_copy;
-  char *f_name;
+  char *file_name_;
   tid_t tid;
   struct thread * cur_t = thread_current();
   
@@ -47,20 +47,20 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
   char *temp_ptr;
-  f_name = malloc(strlen(file_name)+1);
-  strlcpy (f_name, file_name, strlen(file_name)+1);
-  f_name = strtok_r (f_name," ",&temp_ptr);
+  file_name_ = malloc(strlen(file_name)+1);
+  strlcpy (file_name_, file_name, strlen(file_name)+1);
+  file_name_ = strtok_r (file_name_," ",&temp_ptr);
   /* Create a new thread to execute FILE_NAME. */
   //printf("%d\n", cur_t->tid);
-  tid = thread_create (f_name, PRI_DEFAULT, start_process, fn_copy);
-  free(f_name);
+  tid = thread_create (file_name_, PRI_DEFAULT, start_process, fn_copy);
+  free(file_name_);   //free the file name created by malloc mannually
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   else
   { 
-    sema_down(&cur_t->load_sema);
-    if (!cur_t->load_success)
-      return -1;
+    sema_down(&cur_t->load_sema);   //keep the thread waiting until start_process() exits.
+    if (!cur_t->load_success)  //if the child process is not loaded successfully
+      return -1;   
   }
   return tid;
 }
@@ -70,7 +70,6 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
-  //printf("In start_process\n");
   char *file_name = file_name_;
   struct intr_frame if_;
   bool load_success;
@@ -85,16 +84,16 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   palloc_free_page (file_name);
 
-  struct thread * cur_t = thread_current();
+  struct thread * current_thread = thread_current();
+  current_thread->parent->load_success=load_success;
 
-  cur_t->parent->load_success=load_success;
   if (!load_success) {
-    ASSERT(cur_t->parent->exit_status==INIT_EXIT_STAT)
+    ASSERT(current_thread->parent->exit_status==INIT_EXIT_STAT)
     /* exit_status now should be INIT_EXIT_STAT handle later,
     becasuse process start fail, and  exit_status init value is INIT_EXIT_STAT. */
     thread_exit();
   }
-  sema_up(&cur_t->parent->load_sema);
+  sema_up(&current_thread->parent->load_sema);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -118,8 +117,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  //printf("Wait : %s %d\n",thread_current()->name, child_tid);
-  struct thread *cur_t = thread_current ();
+  struct thread *current_thread = thread_current ();
 
   enum intr_level old_level = intr_disable();
   struct list_elem *tmp_e = find_child_proc(child_tid);
@@ -129,8 +127,8 @@ process_wait (tid_t child_tid)
   if(!ch || !tmp_e)
     return -1;
 
-  cur_t->waiting_child = ch;
-  //cur_t->waiting_child = ch;
+  current_thread->waiting_child = ch;
+  //current_thread->waiting_child = ch;
     
   if(!ch->if_waited){
     sema_down(&ch->wait_sema);
@@ -140,41 +138,40 @@ process_wait (tid_t child_tid)
   // else    //if the child process has been waited
   //   return -1;
 
-  int temp_exit_code = ch->exit_status;
   list_remove(tmp_e);
   
-  return temp_exit_code;
+  return ch->exit_status;
 }
 
 /* Free the current process's resources. */
 void
 process_exit (void)
 {
-  struct thread *cur_t = thread_current();
+  struct thread *current_thread = thread_current();
   uint32_t *pd;
 
-  if (cur_t->exit_status == INIT_EXIT_STAT)
-  {
+  int exit_status = current_thread->exit_status;
+  if (exit_status == INIT_EXIT_STAT)
     exit_process(-1);
-    NOT_REACHED();
-  }
 
-  int exit_code = cur_t->exit_status;
-  printf("%s: exit(%d)\n",cur_t->name,exit_code);
+  
+  printf("%s: exit(%d)\n",current_thread->name,exit_status);
 
-  if (true == lock_held_by_current_thread(&filesys_lock))
+  if (lock_held_by_current_thread(&filesys_lock))
   {
-    printf("release_filesys_lock\n"); // for debug.
+    //printf("release_filesys_lock\n"); // for debug.
     lock_release(&filesys_lock);;
   }
 
   // enum intr_level old_level = intr_disable();
   lock_acquire(&filesys_lock);
-  clean_all_files(&cur_t->opened_files);
-  file_close(cur_t->self);
+  clean_all_files(&current_thread->opened_files);
+  file_close(current_thread->self);
+  struct list_elem *elem_pop;
   while(!list_empty(&thread_current()->children_list))
   {
-    struct process_file *f = list_entry (list_pop_front(&thread_current()->children_list), struct child_process, child_elem);
+    elem_pop = list_pop_front(&thread_current()->children_list);
+    struct process_file *f = list_entry (elem_pop, struct child_process, child_elem);
     free(f);
   }
   lock_release(&filesys_lock);
@@ -183,17 +180,17 @@ process_exit (void)
   
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  pd = cur_t->pagedir;
+  pd = current_thread->pagedir;
   if (pd != NULL) 
     {
       /* Correct ordering here is crucial.  We must set
-         cur_t->pagedir to NULL before switching page directories,
+         current_thread->pagedir to NULL before switching page directories,
          so that a timer interrupt can't switch back to the
          process page directory.  We must activate the base page
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
-      cur_t->pagedir = NULL;
+      current_thread->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
@@ -291,12 +288,11 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 bool
 load (const char *file_name, void (**eip) (void), void **esp) 
 {
-  //printf("In load\n");
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
   off_t file_ofs;
-  bool load_success = false;
+  bool success = false;
   int i;
 
   lock_acquire(&filesys_lock);
@@ -403,7 +399,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
-  load_success = true;
+  success = true;
 
   file_deny_write(file);
 
@@ -412,7 +408,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
  lock_release(&filesys_lock);;
-  return load_success;
+  return success;
 }
 
 /* load() helpers. */
