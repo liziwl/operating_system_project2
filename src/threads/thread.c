@@ -301,6 +301,9 @@ thread_exit (void)
 {
   ASSERT (!intr_context ());
 
+  if(thread_current()->parent->waitingon == thread_current()->tid)
+	  sema_up(&thread_current()->parent->child_lock);
+
 #ifdef USERPROG
   process_exit ();
   // printf("done USERPROG\n");
@@ -309,11 +312,6 @@ thread_exit (void)
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
-
-    while(!list_empty(&thread_current()->child_proc)){
-      struct proc_file *f = list_entry (list_pop_front(&thread_current()->child_proc), struct child, elem);
-      free(f);
-    }
 
   intr_disable ();
   list_remove (&thread_current()->allelem);

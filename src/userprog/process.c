@@ -170,6 +170,11 @@ process_exit (void)
   acquire_filesys_lock();
   clean_all_files(&cur_t->files);
   file_close(cur_t->self);
+  while(!list_empty(&thread_current()->child_proc))
+  {
+    struct proc_file *f = list_entry (list_pop_front(&thread_current()->child_proc), struct child, elem);
+    free(f);
+  }
   release_filesys_lock();
   // intr_set_level(old_level);
   // printf("closed all\n");
