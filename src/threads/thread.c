@@ -489,7 +489,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->parent = running_thread();
   list_init (&t->opened_files);
   t->fd_count=2;
-  t->exit_status = -100;
+  t->exit_status = INIT_EXIT_STAT;
   sema_init(&t->child_lock,0);
   t->waiting_child=0;
   t->self=NULL;

@@ -90,9 +90,9 @@ start_process (void *file_name_)
   if (!success) {
     //printf("%d %d\n",cur_t->tid, cur_t->parent->tid);
     cur_t->parent->success=false;
-    ASSERT(cur_t->parent->exit_status==-100)
-    /* exit_status now should be -100 handle later,
-    becasuse process start fail, and  exit_status init value is -100. */
+    ASSERT(cur_t->parent->exit_status==INIT_EXIT_STAT)
+    /* exit_status now should be INIT_EXIT_STAT handle later,
+    becasuse process start fail, and  exit_status init value is INIT_EXIT_STAT. */
     thread_exit();
   }
   else
@@ -149,12 +149,13 @@ process_wait (tid_t child_tid)
 void
 process_exit (void)
 {
-  struct thread *cur_t = thread_current ();
+  struct thread *cur_t = thread_current();
   uint32_t *pd;
 
-  if(cur_t->exit_status==-100){
-    exit_proc(-1);      
-    NOT_REACHED ();
+  if (cur_t->exit_status == INIT_EXIT_STAT)
+  {
+    exit_process(-1);
+    NOT_REACHED();
   }
 
   int exit_code = cur_t->exit_status;

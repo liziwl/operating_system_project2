@@ -1,16 +1,16 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include "userprog/process.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "filesys/off_t.h"
-#include "list.h"
-#include "process.h"
+#include "kernel/list.h"
 
 static void syscall_handler (struct intr_frame *);
-int exec_proc(char *file_name);
-void exit_proc(int status);
+int exec_process(char *file_name);
+void exit_process(int status);
 void * is_valid_addr(const void *vaddr);
 struct process_file* search_fd(struct list* files, int fd);
 void clean_single_file(struct list* files, int fd);
@@ -71,7 +71,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 }
 
 int
-exec_proc(char *file_name)
+exec_process(char *file_name)
 {
 	int tid;
 	lock_acquire(&filesys_lock);
@@ -98,7 +98,7 @@ exec_proc(char *file_name)
 }
 
 void
-exit_proc(int status)
+exit_process(int status)
 {
 	struct child_process *cp;
 	struct thread *cur_thread = thread_current();
@@ -125,7 +125,7 @@ is_valid_addr(const void *vaddr)
 	void *page_ptr = NULL;
 	if (!is_user_vaddr(vaddr) || !(page_ptr = pagedir_get_page(thread_current()->pagedir, vaddr)))
 	{
-		exit_proc(-1);
+		exit_process(-1);
 		return 0;
 	}
 	return page_ptr;
@@ -179,7 +179,7 @@ syscall_exit(struct intr_frame *f)
 {
 	int status;
 	pop_stack(f->esp, &status, 1);
-	exit_proc(status);
+	exit_process(status);
 }
 
 int
@@ -190,7 +190,7 @@ syscall_exec(struct intr_frame *f)
 	if (!is_valid_addr(file_name))
 		return -1;
 
-	return exec_proc(file_name);
+	return exec_process(file_name);
 }
 
 int

@@ -28,7 +28,8 @@ typedef int tid_t;
 
 
 
-struct lock filesys_lock; //a global lock on filesystem operations, to ensure thread safety. 
+struct lock filesys_lock; //a global lock on filesystem operations, to ensure thread safety.
+#define INIT_EXIT_STAT -2333 
 
 /* A kernel thread or user process.
 

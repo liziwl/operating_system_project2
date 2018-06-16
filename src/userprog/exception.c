@@ -87,7 +87,7 @@ kill (struct intr_frame *f)
     case SEL_UCSEG:
       /* User's code segment, so it's a user exception, as we
          expected.  Kill the user process.  */
-      exit_proc(-1);
+      exit_process(-1);
       NOT_REACHED();      
       printf ("%s: dying due to interrupt %#04x (%s).\n",
               thread_name (), f->vec_no, intr_name (f->vec_no));
@@ -98,7 +98,7 @@ kill (struct intr_frame *f)
          Kernel code shouldn't throw exceptions.  (Page faults
          may cause kernel exceptions--but they shouldn't arrive
          here.)  Panic the kernel to make the point.  */
-      exit_proc(-1);       
+      exit_process(-1);       
       NOT_REACHED();      
       intr_dump_frame (f);
       PANIC ("Kernel bug - unexpected interrupt in kernel"); 
