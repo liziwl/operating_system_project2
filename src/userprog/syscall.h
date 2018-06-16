@@ -10,6 +10,6 @@ struct proc_file {
 };
 
 void syscall_init (void);
-void close_all_files(struct list* files);
+void clean_all_files(struct list* files);
 
 #endif /* userprog/syscall.h */

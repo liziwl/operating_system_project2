@@ -152,29 +152,27 @@ process_exit (void)
   struct thread *cur_t = thread_current ();
   uint32_t *pd;
 
+  if(cur_t->exit_error==-100){
+    exit_proc(-1);      
+    NOT_REACHED ();
+  }
 
-    if(cur_t->exit_error==-100){
-      exit_proc(-1);      
-      NOT_REACHED ();
-    }
+  int exit_code = cur_t->exit_error;
+  printf("%s: exit(%d)\n",cur_t->name,exit_code);
 
-    int exit_code = cur_t->exit_error;
-    printf("%s: exit(%d)\n",cur_t->name,exit_code);
-
-    if (true == filesys_lock_held_by_current_thread())
-    {
-      printf("release_filesys_lock\n"); // for debug.
-      release_filesys_lock();
-    }
-
-    enum intr_level old_level = intr_disable();
-    acquire_filesys_lock();
-    file_close(cur_t->self);
-    close_all_files(&cur_t->files);
+  if (true == filesys_lock_held_by_current_thread())
+  {
+    printf("release_filesys_lock\n"); // for debug.
     release_filesys_lock();
-    intr_set_level(old_level);
-    // printf("closed all\n");
+  }
 
+  // enum intr_level old_level = intr_disable();
+  acquire_filesys_lock();
+  clean_all_files(&cur_t->files);
+  file_close(cur_t->self);
+  release_filesys_lock();
+  // intr_set_level(old_level);
+  // printf("closed all\n");
   
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
