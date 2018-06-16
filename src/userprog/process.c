@@ -57,9 +57,9 @@ process_execute (const char *file_name)
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   else
-  {
-    sema_down(&cur_t->child_lock);
-    if (!cur_t->success)
+  { 
+    sema_down(&cur_t->load_sema);
+    if (!cur_t->load_success)
       return -1;
   }
   return tid;
@@ -73,33 +73,28 @@ start_process (void *file_name_)
   //printf("In start_process\n");
   char *file_name = file_name_;
   struct intr_frame if_;
-  bool success;
+  bool load_success;
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  load_success = load (file_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
 
   struct thread * cur_t = thread_current();
 
-  if (!success) {
-    //printf("%d %d\n",cur_t->tid, cur_t->parent->tid);
-    cur_t->parent->success=false;
+  cur_t->parent->load_success=load_success;
+  if (!load_success) {
     ASSERT(cur_t->parent->exit_status==INIT_EXIT_STAT)
     /* exit_status now should be INIT_EXIT_STAT handle later,
     becasuse process start fail, and  exit_status init value is INIT_EXIT_STAT. */
     thread_exit();
   }
-  else
-  {
-    cur_t->parent->success=true;
-  }
-  sema_up(&cur_t->parent->child_lock);
+  sema_up(&cur_t->parent->load_sema);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -138,7 +133,7 @@ process_wait (tid_t child_tid)
   //cur_t->waiting_child = ch;
     
   if(!ch->if_waited){
-    sema_down(&cur_t->child_lock);
+    sema_down(&ch->wait_sema);
   
      //ch->if_waited=true;
    }
@@ -301,7 +296,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
   off_t file_ofs;
-  bool success = false;
+  bool load_success = false;
   int i;
 
   lock_acquire(&filesys_lock);
@@ -408,7 +403,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
-  success = true;
+  load_success = true;
 
   file_deny_write(file);
 
@@ -417,7 +412,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
  lock_release(&filesys_lock);;
-  return success;
+  return load_success;
 }
 
 /* load() helpers. */

@@ -193,6 +193,7 @@ thread_create (const char *name, int priority,
   c->tid = tid;
   c->exit_status = t->exit_status;
   c->if_waited = false;
+  sema_init (&(c->wait_sema), 0);
   list_push_back (&running_thread()->children_list, &c->child_elem);
 
   /* Prepare thread for first run by initializing its stack.
@@ -304,7 +305,7 @@ thread_exit (void)
   if (thread_current()->parent->waiting_child != NULL)
   {
     if (thread_current()->parent->waiting_child->tid == thread_current()->tid)
-      sema_up(&thread_current()->parent->child_lock);
+      sema_up(&thread_current()->parent->waiting_child->wait_sema);
   }
   intr_set_level(old_level);
 
@@ -494,7 +495,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->opened_files);
   t->fd_count=2;
   t->exit_status = INIT_EXIT_STAT;
-  sema_init(&t->child_lock,0);
+  sema_init(&t->load_sema,0);
   t->waiting_child=NULL;
   t->self=NULL;
   list_push_back (&all_list, &t->allelem);

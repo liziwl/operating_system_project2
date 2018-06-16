@@ -104,14 +104,15 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     int64_t waketick;
-    bool success;
-    int exit_status;
+    bool load_success;  //if the child process is loaded successfully
+    struct semaphore load_sema;   // semaphore to keep the thread waiting until it makes sure whether the child process if successfully loaded.
+    int exit_status;    
     struct list children_list;
-    struct thread* parent;
+    struct thread* parent;   
     struct file *self;  // its executable file
     struct list opened_files;     //all the opened files
     int fd_count;
-    struct semaphore child_lock;
+    //struct semaphore child_lock;
     struct child_process * waiting_child;  //pid of the child process it is currently waiting
 
 #ifdef USERPROG
@@ -132,6 +133,7 @@ struct thread
       according to the document: a process may wait for any given child at most once.
       if_waited would be initialized to false*/
       bool if_waited;
+      struct semaphore wait_sema;
     };
 
 /* If false (default), use round-robin scheduler.
