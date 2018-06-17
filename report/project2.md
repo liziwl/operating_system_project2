@@ -277,6 +277,7 @@ In this task, we accomplished three kernel system calls. To achieve that, we add
 struct thread {
     ...
     struct list opened_files;   //all the opened files
+    int fd_count;
     ...
 };
 ```
@@ -385,33 +386,25 @@ Also, we disable the interruption, when we go through `thread_current()->parent-
 
 Actually, all the critical part of syscall operations are provided by `filesys/filesys.c`. At the same time, the document warns us avoiding modifying the `filesys/` directory. So the vital aspect is that poping and getting the data in the stack correctly, and be careful not to do I/O simultaneously.
 
-## Custom test case
-
-### case 1: open many files
-
-#### Aim
-This test tests the implementation of the thread can hold a large number of program files.
-
-#### Design idea
-We open 500 files on a single program. If it can survive, it passes the test case.
-
-### case 2: Implementation of the filesize system call
-
-#### Aim
-We find that there is no test case for filesize system call, so we create one.
-
-#### Design idea
-
-We verify that the byte_cnt by system call is the same as the file actully is.
-
-## Design Changes
-
 ## Reflection
+
+During this project, we have learned alot about user programs, semaphore, locks in operating systems: 
+
+- How an operating system ensure the security by checking the validation of the address. An operating system is software that manages the computer hardware. The hardware must provide appropriate mechanisms to ensure the correct operation of the computer system and to prevent user programs from interfering with the proper operation of the system. 
+- How a system call is implemented. Even though there is no `fork` in `pintos`, we still can do the similar thing using `process_execute`. It create a child process and allocate memory for it. It wait until it knows whether the child process is loaded successfully or not. 
+- How important a semaphore or a lock can be to a operating system. semaphore blocks and wakes up the corresponding thread. A lock makes sure no other thread can touch the same resouce.
 
 ### Contributions
 
-In this project, Danning XIE is responsible for implementing Task 1 and designing as well as implementing parts of Task 2. Ziqiang LI is responsible for implementing prarts of Task 2 and designing as well as implementing Task 3.
-
-Both members spent a great amount of time on debugging the Pintos system with `printf()`.
-
-### What went well and wrong
+- Task1 :
+  - Code : Danning Xie
+  - Report : Danning Xie
+- Task2:
+  - Code : Danning Xie & Ziqiang Li
+  - Report : Danning Xie
+- Task3:
+  - Code: Ziqiang Li & Danning Xie
+  - Report: Ziqiang Li
+- Hack Tests:
+  - Code: Ziqiang Li
+  - Report: Ziqiang Li
