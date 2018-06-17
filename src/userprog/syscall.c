@@ -14,7 +14,7 @@ void exit_process(int status);
 void * is_valid_addr(const void *vaddr);
 struct process_file* search_fd(struct list* files, int fd);
 void clean_single_file(struct list* files, int fd);
-// void clean_all_files(struct list* files); // declear in syscall.h using another c files
+// void clean_all_files(struct list* files); // declear in syscall.h used by another c files
 
 
 void syscall_exit(struct intr_frame *f);
@@ -37,13 +37,13 @@ void pop_stack(int *esp, int *a, int offset){
 }
 
 void
-syscall_init (void) 
+syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
 static void
-syscall_handler (struct intr_frame *f UNUSED) 
+syscall_handler (struct intr_frame *f UNUSED)
 {
   	int *p = f->esp;
 	is_valid_addr(p);
@@ -82,7 +82,7 @@ exec_process(char *file_name)
 	name_tmp = strtok_r(name_tmp, " ", &tmp_ptr);
 
 	struct file *f = filesys_open(name_tmp);
-	
+
 	if (f == NULL)
 	{
 		lock_release(&filesys_lock);
