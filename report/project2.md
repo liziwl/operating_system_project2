@@ -10,15 +10,106 @@ Final Report for Project 2: User Programs
 
     Task 2 implement with Danning XIE and Task 3 design and implement, report writing.
 
-## Task 1: Argument Passing
+## 1 Task 1: Argument Passing
 
-### Data structures and functions
+### 1.1 Data structures and functions
 
-### Algorithms
+#### 1.1.1 Data structures
 
-### Synchronization
+- <process.c> 
+  - New macro `# define WORD_SIZE 4`
+- <thread.h>
+  - Add new attributes to the `struct thread` : `struct file *self`
 
-### Rationale
+#### 1.1.2 Functions
+
+The functions involved in this process is 
+
+- <process.c> : 
+  - `process_execute (const char *file_name)`
+  -  `load (const char *file_name, void (**eip) (void), void **esp)`
+  - `setup_stack (void **esp, char * file_name)`
+  - `process_wait (tid_t child_tid)`
+- <syscall.c>
+  - `syscall_write(struct intr_frame *f);`
+
+Note that `process_wait (tid_t child_tid)` and `syscall_write(struct intr_frame *f);` are really task2 and task3's job. So we won't get into much details in this section.
+
+The tokenize process of `char *` is implemented by calling `strtok_r`.
+
+### 1.2 Algorithms
+
+#### 1.2.1 Analysis
+
+The forward process of how we create a new process:
+
+- calling method <process.c> `process_execute`
+- the operating system then ask for a corresponding room of memory
+- create a child process of the current one by calling function <thread.c> `thread_create` and pass a function pointer of `load` to it.
+- In function `load` , it loads an ELF executable from the `file_name` parameter passed in, stores the executable's entry point into `*eip` and its initial stack pointer into `*esp` by calling function `setup_stack` . 
+
+Therefore, the main work we have to do in this task is to pass the command-line argument into the `load` and `setup_stack`, then push the arguments in correct order into the stack by operating on the stack pointer `*esp`.
+
+#### 1.2.2 Implementation
+
+#### 1.2.2.1 Split and Pass the arguments
+
+The `file_name` passed into function `process_execute (const char *file_name) ` include both executable file and the argument. Therefore, the first thing we need to do is to split the executable file name and the argument.
+
+- <process.c/process_execute> Split the thread name and save it in the variable `chr * thread_name`
+
+  ```c
+  char *save_ptr;
+  thread_name = malloc(strlen(file_name)+1);
+  strlcpy (thread_name, file_name, strlen(file_name)+1);
+  thread_name = strtok_r (thread_name," ",&save_ptr); 
+  ```
+
+  Then create a child thread
+
+  `tid = thread_create (thread_name, PRI_DEFAULT, start_process, fn_copy);`
+
+- <process.c/start_process>
+
+  pass the `file_name` into the function `load`:
+
+  `success = load (file_name, &if_.eip, &if_.esp);`
+
+- <process.c/load> Split the executable file name and open the file
+
+  and then store the executable file into the current thread :
+
+- <process.c/load> call `setup_stack` and pass the `file_name` 
+
+- <process.c/setup_stack> In this method, we split the `argv` , count the `argc` and then push them in the correct order according to the figure below in the document.
+
+  ![](./stack.png)
+
+  - First tokenize the `file_name`
+
+  - Iterate the token and count the `argc` (argument count)
+
+  - ask for the coresponding size of room for `argv[]`
+
+  - push the element of argv, word align. Also make sure the `argv[argc]` is a null pointer. Push the address of `argv` and finally a return address.
+
+    Note that we simply move the `*esp` (stack pointer) instead of pushing null value/pointer and return address.
+
+### 1.3 Synchronization
+
+During the function `laod`, we allocate page directory for the file, open the file, push the argument into the stack. According to **Task3**, the file operation syscalls do not call multiple filesystem functions concurrently. Therefore, we have to keep the file from modified or opened by other processes. We implement it by using `filesys_lock` (defined in `thread.h` which we will explain in **Task3**):
+
+```c
+lock_acquire(&filesys_lock);
+//loading the file
+lock_release(&filesys_lock);
+```
+
+Also, according to the **Task3**, while a user process is running, the operating system must ensure that nobody can modify its executable on disk. `file_deny_write(file)` denies writes to this current-running files.  
+
+### 1.4 Rationale
+
+In this task, we split the input arguments and pass them into function `load` to push the arguments into the stack in the corret order. We also implement lock operations to ensure that nobody can operates on the file. `file_deny_write` is also called to pass the "rox" tests.
 
 ## Task 2: Process Control Syscalls
 
