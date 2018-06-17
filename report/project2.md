@@ -1,14 +1,14 @@
-Final Report for Project 2: User Programs
-==========================================
+# Final Report for Project 2: User Programs
+
 ## Group Members
 
-* Danning XIE <11510718@mail.sustc.edu.cn>
+- Danning XIE <11510718@mail.sustc.edu.cn>
 
-    Task 2 implement with Ziqiang LI and Task 1 design and implement.
+  Task 2 implement with Ziqiang LI and Task 1 design and implement.
 
-* Ziqiang LI <11510352@mail.sustc.edu.cn>
+- Ziqiang LI <11510352@mail.sustc.edu.cn>
 
-    Task 2 implement with Danning XIE and Task 3 design and implement, report writing.
+  Task 2 implement with Danning XIE and Task 3 design and implement, report writing.
 
 ## 1 Task 1: Argument Passing
 
@@ -81,9 +81,9 @@ The `file_name` passed into function `process_execute (const char *file_name) ` 
 
 - <process.c/load> call `setup_stack` and pass the `file_name` 
 
-- <process.c/setup_stack> In this method, we split the `argv` , count the `argc` and then push them in the correct order according to the figure below in the document.
+- <process.c/setup_stack> In this method, we split the `argv` , count the `argc` and then push them in the correct order according to the document.
 
-  ![](./stack.png)
+  Put the figure here @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
   - First tokenize the `file_name`
 
@@ -115,18 +115,11 @@ In this task, we split the input arguments and pass them into function `load` to
 
 ### Data structures and functions
 
-
 ### Algorithms
-
 
 ### Synchronization
 
-
 ### Rationale
-
-`strtok_r()` is thread-safe, `strtok()` is not. Pintos uses `strtok_r()` instead of `strtok()` so that multiple threads can call `strtok_r()` without messing up the internal state of tokens of one another.
-
-If memory runs out during the separation of arguments, only this user program crashes in the case, but in the case where the kernel does this separation, the whole system may crash.
 
 ## Task 3: File Operation Syscalls
 
@@ -160,54 +153,54 @@ Store file pointer and file description number, as a list_elem in the `opened_fi
 
 - `static void syscall_handler (struct intr_frame *)`
 
-    Handling the file syscall, going to the specific calls by the values in the stack.
+  Handling the file syscall, going to the specific calls by the values in the stack.
 
 - specific file syscall functions
 
-    Call the appropriate functions in the file system library.
+  Call the appropriate functions in the file system library.
 
-    ```c
-    void syscall_exit(struct intr_frame *f);
-    int syscall_exec(struct intr_frame *f);
-    int syscall_wait(struct intr_frame *f);
-    int syscall_creat(struct intr_frame *f);
-    int syscall_remove(struct intr_frame *f);
-    int syscall_open(struct intr_frame *f);
-    int syscall_filesize(struct intr_frame *f);
-    int syscall_read(struct intr_frame *f);
-    int syscall_write(struct intr_frame *f);
-    void syscall_seek(struct intr_frame *f);
-    int syscall_tell(struct intr_frame *f);
-    void syscall_close(struct intr_frame *f);
-    ```
+  ```c
+  void syscall_exit(struct intr_frame *f);
+  int syscall_exec(struct intr_frame *f);
+  int syscall_wait(struct intr_frame *f);
+  int syscall_creat(struct intr_frame *f);
+  int syscall_remove(struct intr_frame *f);
+  int syscall_open(struct intr_frame *f);
+  int syscall_filesize(struct intr_frame *f);
+  int syscall_read(struct intr_frame *f);
+  int syscall_write(struct intr_frame *f);
+  void syscall_seek(struct intr_frame *f);
+  int syscall_tell(struct intr_frame *f);
+  void syscall_close(struct intr_frame *f);
+  ```
 
 - `void * is_valid_addr(const void *vaddr)`
 
-    Verifying `VADDR` is a user virtual address and is located in the current thread page.
+  Verifying `VADDR` is a user virtual address and is located in the current thread page.
 
 - `void pop_stack(int *esp, int *a, int offset)`
 
-    All pop operation on the stack needs to call this function. It will verify if the stack pointer is a valid user-provided pointer, then dereference the pointer.
+  All pop operation on the stack needs to call this function. It will verify if the stack pointer is a valid user-provided pointer, then dereference the pointer.
 
 - `int exec_process(char *file_name)`
 
-    Sub-function invoked by `int syscall_exec()`: split string into tokens and call `process_execute()` with tokens.
+  Sub-function invoked by `int syscall_exec()`: split string into tokens and call `process_execute()` with tokens.
 
 - `void exit_process(int status)`
 
-    Sub-function invoked by `int syscall_exit()`: set current thread status by `status`, and update the status of the child(current) process in its parent process. At last, call `thread_exit()`.
+  Sub-function invoked by `int syscall_exit()`: set current thread status by `status`, and update the status of the child(current) process in its parent process. At last, call `thread_exit()`.
 
 - `struct process_file* search_fd(struct list* files, int fd)`
 
-    Find file descriptor and return process file struct in the process file list, if not exist return NULL.
+  Find file descriptor and return process file struct in the process file list, if not exist return NULL.
 
 - `void clean_single_file(struct list* files, int fd)`
 
-    Go through the process file list, and close specific process file, and free the space by the file descriptor number.
+  Go through the process file list, and close specific process file, and free the space by the file descriptor number.
 
 - `void clean_all_files(struct list* files)`
 
-    Go through the process file list, close all process file and free the space. Do this when exit a process.
+  Go through the process file list, close all process file and free the space. Do this when exit a process.
 
 ### Algorithms
 
@@ -239,4 +232,3 @@ In this project, Danning XIE is responsible for implementing Task 1 and designin
 Both members spent a great amount of time on debugging the Pintos system with `printf()`.
 
 ### What went well and wrong
-
