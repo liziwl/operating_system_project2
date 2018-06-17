@@ -35,10 +35,10 @@ extern struct list all_list;
 tid_t
 process_execute (const char *file_name) 
 {
-  char *fn_copy;
-  char *file_name_;
+  char *fn_copy;  // a copy of file_name
+  char *thread_name;  
   tid_t tid;
-  struct thread * cur_t = thread_current();
+  struct thread * current_thread = thread_current();
   
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -46,20 +46,20 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  char *temp_ptr;
-  file_name_ = malloc(strlen(file_name)+1);
-  strlcpy (file_name_, file_name, strlen(file_name)+1);
-  file_name_ = strtok_r (file_name_," ",&temp_ptr);
+  char *save_ptr;
+  thread_name = malloc(strlen(file_name)+1);
+  strlcpy (thread_name, file_name, strlen(file_name)+1);
+  thread_name = strtok_r (thread_name," ",&save_ptr);  // get the thread name
   /* Create a new thread to execute FILE_NAME. */
-  //printf("%d\n", cur_t->tid);
-  tid = thread_create (file_name_, PRI_DEFAULT, start_process, fn_copy);
-  free(file_name_);   //free the file name created by malloc mannually
+  //printf("%d\n", current_thread->tid);
+  tid = thread_create (thread_name, PRI_DEFAULT, start_process, fn_copy);
+  free(thread_name);   //free the file name created by malloc mannually
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   else
   { 
-    sema_down(&cur_t->load_sema);   //keep the thread waiting until start_process() exits.
-    if (!cur_t->load_success)  //if the child process is not loaded successfully
+    sema_down(&current_thread->load_sema);   //keep the thread waiting until start_process() exits.
+    if (!current_thread->load_success)  //if the child process is not loaded successfully
       return -1;   
   }
   return tid;
@@ -68,26 +68,26 @@ process_execute (const char *file_name)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *file_name)
 {
-  char *file_name = file_name_;
+  //char *file_name = file_name;
   struct intr_frame if_;
-  bool load_success;
+  bool success;
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  load_success = load (file_name, &if_.eip, &if_.esp);
+  success = load (file_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
 
   struct thread * current_thread = thread_current();
-  current_thread->parent->load_success=load_success;
+  current_thread->parent->load_success = success;
 
-  if (!load_success) {
+  if (!success) {
     ASSERT(current_thread->parent->exit_status==INIT_EXIT_STAT)
     /* exit_status now should be INIT_EXIT_STAT handle later,
     becasuse process start fail, and  exit_status init value is INIT_EXIT_STAT. */
@@ -403,11 +403,11 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   file_deny_write(file);
 
-  thread_current()->self = file;
+  thread_current()->self = file;  //store the executable file into the current thread
   
  done:
   /* We arrive here whether the load is successful or not. */
- lock_release(&filesys_lock);;
+ lock_release(&filesys_lock);
   return success;
 }
 
@@ -558,12 +558,7 @@ setup_stack (void **esp, char * file_name)
       is_lastone_space=false;
   }
   intr_set_level (old_level);
-  // //calculate argc 
-  // token = strtok_r (filename_cp, " ", &temp_ptr); 
-  // while(token){ 
-  //   token = strtok_r (NULL, " ", &temp_ptr); 
-  //   argc++; 
-  // }
+
     
   int *argv = calloc(argc,sizeof(int));
 
