@@ -385,6 +385,25 @@ Also, we disable the interruption, when we go through `thread_current()->parent-
 
 Actually, all the critical part of syscall operations are provided by `filesys/filesys.c`. At the same time, the document warns us avoiding modifying the `filesys/` directory. So the vital aspect is that poping and getting the data in the stack correctly, and be careful not to do I/O simultaneously.
 
+## Custom test case
+
+### case 1: open many files
+
+#### Aim
+This test tests the implementation of the thread can hold a large number of program files.
+
+#### Design idea
+We open 500 files on a single program. If it can survive, it passes the test case.
+
+### case 2: Implementation of the filesize system call
+
+#### Aim
+We find that there is no test case for filesize system call, so we create one.
+
+#### Design idea
+
+We verify that the byte_cnt by system call is the same as the file actully is.
+
 ## Design Changes
 
 ## Reflection
