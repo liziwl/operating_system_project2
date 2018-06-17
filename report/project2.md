@@ -83,7 +83,7 @@ The `file_name` passed into function `process_execute (const char *file_name) ` 
 
 - <process.c/setup_stack> In this method, we split the `argv` , count the `argc` and then push them in the correct order according to the document.
 
-  Put the figure here @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  ![](./stack.png)
 
   - First tokenize the `file_name`
 
