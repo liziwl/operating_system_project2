@@ -3,12 +3,7 @@
 ## Group Members
 
 - Danning XIE <11510718@mail.sustc.edu.cn>
-
-  Task 2 implement with Ziqiang LI and Task 1 design and implement.
-
 - Ziqiang LI <11510352@mail.sustc.edu.cn>
-
-  Task 2 implement with Danning XIE and Task 3 design and implement, report writing.
 
 ## 1 Task 1: Argument Passing
 
@@ -27,7 +22,7 @@ The functions involved in this process is
 
 - <process.c> : 
   - `process_execute (const char *file_name)`
-  -  `load (const char *file_name, void (**eip) (void), void **esp)`
+  - `load (const char *file_name, void (**eip) (void), void **esp)`
   - `setup_stack (void **esp, char * file_name)`
   - `process_wait (tid_t child_tid)`
 - <syscall.c>
@@ -83,7 +78,7 @@ The `file_name` passed into function `process_execute (const char *file_name) ` 
 
 - <process.c/setup_stack> In this method, we split the `argv` , count the `argc` and then push them in the correct order according to the document.
 
-  ![](./stack.png)
+  ![](/Users/danning/Desktop/sustc/os/pro/pro2/operating_system_project2/report/stack.png)
 
   - First tokenize the `file_name`
 
@@ -111,15 +106,166 @@ Also, according to the **Task3**, while a user process is running, the operating
 
 In this task, we split the input arguments and pass them into function `load` to push the arguments into the stack in the corret order. We also implement lock operations to ensure that nobody can operates on the file. `file_deny_write` is also called to pass the "rox" tests.
 
-## Task 2: Process Control Syscalls
+## 2 Task 2: Process Control Syscalls
 
-### Data structures and functions
+### 2.1 Data structures and functions
 
-### Algorithms
+- <thread.h>
+  - We add some new attributes to the `struct thread`:
+    - `bool load_success` : whether its child process successfully loaded its executable.
+    - `struct semaphore load_sema` : keep the thread waiting until it makes sure whether the child process is successfully loaded.
+    - `int exit_status` 
+    - `struct list children_list` : list of its child processes
+    - `struct file * self` : its executable file, we've discussed it in **Task1**
+    - `strut child_process *waiting_child`: a pointer to the child process it is currently waiting on 
+  - We create a new struct called `child_process` and had it some attributes:
+    - `tid` : its thread id. making it easy for its parent finding it.
+    - `if_waited` : whether the child process has been waited. According to the document, a process may wait for any given child at most once. The attributes would be initialized to `false`
+    - `int exit_status` : its exit status. used to pass to its parent process when it is wated.
+    - `struct semaphore wait_sema` : This semaphore is designed for waiting process. It is used to avoid race condition
 
-### Synchronization
+#### 2.1.2 Functions
 
-### Rationale
+The functions involved :
+
+- <syscall.c> 
+  - `void * is_valid_addr(const void *vaddr);`
+  - `void pop_stack(int *esp, int *a, int offset)`
+
+To implement the three system call functions the document ask for, we write a method `syscall_handler` to handle all the system calls in both **Task2** and **Task3** by checking the argument in the stack using a `switch-case` structure. The three system calls in this task are wraped into functions `syscall_halt()`, `syscall_exec()` and `syscall_wait()`, which calls the functions `shutdown_power_off()`, `process_execute()` and `process_wait()` in the process.c file.
+
+### 2.2 Algorithms
+
+#### 2.2.1 Analysis
+
+In this task, we are asked to implement three kernel space system calls. A `switch-case` structure in `system_handler` let the system calls execute their coresponding code. The type of system calls read from the syscall argument located on the user process’s stack. However, we have to make sure  the process reads and writes in the user process's virtual address space. That is, we should check whether the address is pointed to a valid address before execute system calls. 
+
+The invalid memory access include:
+
+- NULL pointer
+- Invalid pointers (which point to unmapped memory locations) 
+- Pointers to the kernel’s virtual address space 
+
+#### 2.2.2 Implementation
+
+##### 2.2.2.1 Check valid address
+
+We implement it in function:
+
+```c
+void *is_valid_addr(const void *vaddr)
+{
+	void *page_ptr = NULL;
+	if (!is_user_vaddr(vaddr) || !(page_ptr = pagedir_get_page(thread_current()->pagedir, vaddr)))
+	{
+		exit_process(-1);
+		return 0;
+	}
+	return page_ptr;
+}
+```
+
+The function checks whether the address is valid. If the `vaddr` is `NULL` , or of the kernel address space, or points to invalid locations, `exit_process` is called to terminate the current thread with exit status -1. Otherwise it returns the pyhsical address.
+
+##### 2.2.2.2 Pop stack
+
+In order to pop the argument we want from the user process's stack, we realize the poping process in a method :
+
+```c
+void pop_stack(int *esp, int *a, int offset){
+	int *tmp_esp = esp;
+	*a = *((int *)is_valid_addr(tmp_esp + offset));
+}
+```
+
+All pop operations on the stack need to call this function. It will verify if the stack pointer is a valid user-provided pointer, then dereference the pointer of a specific location(offset) which we will discuss later.
+
+##### 2.2.2.3 Halt
+
+We simply calls the `shutdown_power_off()` in <devices/shutdown.c> 
+
+##### 2.2.2.1 Exec
+
+We call <syscall.c>`syscall_exec(file_name)` first to check whether the file refered by `file_name`  is valid.
+
+```c
+pop_stack(f->esp, &file_name, 1);
+if (!is_valid_addr(file_name))
+	return -1;
+```
+
+If it is not, we return -1, else we call <process.c>`process_execute(file_name)`.  In function `process_execute` , we first split the thread name and create a child process with it. We wait util the `thread_create` return. Since the `tid` returned could be invalid, the parent should wait until it knows whether the child process's executable file is loaded successfully. We implement this by `thread->load_sema` which we will discuss later in the Synchronization part. We store the loading information in `thread->load_success`. If successfully loaded, the method returns its `tid`, otherwise -1.
+
+##### 2.2.2.1 Wait
+
+The syscall means that  the process should wait for a child process pid and retrieves the child’s exit status. First we should pop the syscall argument (child process's tid) from the user process stack and check if it is valid:
+
+```c
+pop_stack(f->esp, &child_tid, 1);
+```
+
+Then we call <process.c>`process_wait(child_tid)`. If the child process with `child_tid` exists in `thread_current()->children_list` , then we can go on wait. We implement the finding process in a method <thread.c> `find_child_proc(child_tid)` which find the corresponding `list_elem` with `tid=child_tid` in the current thread's `children_list`. 
+
+Note that according to the document,  a process may wait for any given child at most once.  Therefore, before we step into waiting process, we should first check whether the child has been waited before. If not, set the child thread's `if_waited` to `true` and down the semaphore `wait_sema`. The `wait_sema` will be increased in method `process_exit` when child process exits. Finally we can remove the child process from `child_list` and return its `exit_status`.
+
+### 2.3 Synchronization
+
+#### 2.3.1 `filesys_lock` : Lock on file system operations
+
+According to the document: the Pintos filesystem is not thread-safe. We must make sure that the file operation syscalls do not call multiple filesystem functions concurrently. And we are permitted to use a **global lock** on filesystem operations, to ensure thread safety. Therefore, we assert the global lock `filesys_lock` in `thread.h`
+
+In this task, we use the lock in the following place:
+
+- <process.c>`load` : we acquire the `filesys_lock` before we allocate the page directory, open executable file and all the operations we had on file. Then we release the lock at the end of the method before it returns. Note that we have to release the lock whether the loading process is successful or not.
+
+  ```c
+  bool load (const char *file_name, void (**eip) (void), void **esp){
+      lock_acquire(&filesys_lock);
+      ....
+      // operations on the file
+      if load fail:
+      	goto done
+      ....
+      done:
+      	lock_release(&filesys_lock);
+  }
+  ```
+
+- <syscall.c> `exec_process` : The method opens the file with the `file_name` to check whether the file exists. Before we open, we should acquire the lock, and release it after. Note that we should release the lock whether the file exists or not.
+
+#### 2.3.2 `thread->load_sema`
+
+When a process is creating a new child process, it has to wait until it knows whether the child process's executable file is loaded successfully. Therefore, once the child thread is created, it downs the `wait_sema` in method <process.c>`process_execute` and block the parent thread:
+
+```c
+sema_down(&current_thread->load_sema);
+```
+
+Once the child process'c executable file finish loading, it upped the semaphore to wake up the blocked parent thread in method <process.c>`start_process`:
+
+```c
+sema_up(&current_thread->parent->load_sema);
+```
+
+Note that we should up the semaphore whether the executable file is loaded successfully or not.
+
+#### 2.3.3 `child_process->wait_sema`
+
+The semaphore is decreased when a thread start to wait in <process.c>`process_wait` one of its child process:
+
+```c
+sema_down(&child_process->wait_sema);
+```
+
+ Once the semaphore is decreased, the thread is blocked until the child process exits in method <thread.c>`thread_exit`. When the child process the process is waiting exits, it upped the semaphore `wait_sema` and wake up the blocked parent thread:
+
+```c
+sema_up(&thread_current()->parent->waiting_child->wait_sema);
+```
+
+### 2.4 Rationale
+
+In this task, we accomplished three kernel system calls. To achieve that, we add some new attributes to the struct `thread` and designed a new structure `child_process` for child process. Semaphores are also used in this task to prevent race condition and make sure the execution order.
 
 ## Task 3: File Operation Syscalls
 
@@ -215,7 +361,25 @@ When a syscall is invoked, `void syscall_handler()` handle the process. All argu
 
 ### Synchronization
 
-All of the file operations are protected by the global file system lock, which prevents doing I/O on a same fd simultaneously. We disable the interruption, when we go through `thread_current()->parent->children_list` or `thread_current()->opened_files`, to prevent unpredictable error or race condition in context switch. So they will not cause race conditions.
+All of the file operations are protected by the global file system lock, which prevents doing I/O on a same fd simultaneously. 
+
+- First, we check whether the current thread is holding the global lock `filesys_lock` . If so, we release it.	
+
+  ```c
+  if (lock_held_by_current_thread(&filesys_lock))
+      lock_release(&filesys_lock);
+  ```
+
+- Then we have to close all the file the current thread opens and free all its child.
+
+  ```c
+  lock_acquire(&filesys_lock);
+  //close all current_thread()->opened_files
+  //free current_thread()->children_list;
+  lock_release(&filesys_lock);
+  ```
+
+Also, we disable the interruption, when we go through `thread_current()->parent->children_list` or `thread_current()->opened_files`, to prevent unpredictable error or race condition in context switch. So they will not cause race conditions.
 
 ### Rationale
 
@@ -225,7 +389,7 @@ Actually, all the critical part of syscall operations are provided by `filesys/f
 
 ## Reflection
 
-### What did each memebr do
+### Contributions
 
 In this project, Danning XIE is responsible for implementing Task 1 and designing as well as implementing parts of Task 2. Ziqiang LI is responsible for implementing prarts of Task 2 and designing as well as implementing Task 3.
 
