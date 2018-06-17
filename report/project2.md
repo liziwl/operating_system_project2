@@ -1,5 +1,5 @@
-Final Report for Project 1: Threads
-===================================
+Final Report for Project 2: User Programs
+==========================================
 ## Group Members
 
 * Danning XIE <11510718@mail.sustc.edu.cn>
@@ -85,11 +85,11 @@ Final Report for Project 1: Threads
 
 - `void clean_single_file(struct list* files, int fd)`
 
-    Go through the the process file list, and close specific process file by the file descriptor number.
+    Go through the process file list, and close specific process file by the file descriptor number.
 
 - `void clean_all_files(struct list* files)`
 
-    Go through the the process file list, and close all process file. Do this when exit a process.
+    Go through the process file list, and close all process file. Do this when exit a process.
 
 ### Algorithms
 

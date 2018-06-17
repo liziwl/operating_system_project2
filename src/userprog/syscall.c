@@ -131,7 +131,7 @@ is_valid_addr(const void *vaddr)
 	return page_ptr;
 }
 
-  /* Find fd and return process fild struct in the list,
+  /* Find fd and return process file struct in the list,
   if not exist return NULL. */
 struct process_file *
 search_fd(struct list* files, int fd)
