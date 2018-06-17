@@ -177,10 +177,5 @@ bool cmp_waketick(struct list_elem *first, struct list_elem *second, void *aux);
 #endif /* threads/thread.h */
 
 #ifdef USERPROG
-/* Owned by userprog/exception.c. */
-// void acquire_filesys_lock();
-// bool try_acquire_filesys_lock();
-// bool filesys_lock_held_by_current_thread();
-// void release_filesys_lock();
 struct list_elem *find_children_list(tid_t child_tid);
 #endif

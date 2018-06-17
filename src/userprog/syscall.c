@@ -7,6 +7,7 @@
 #include "threads/vaddr.h"
 #include "filesys/off_t.h"
 #include "kernel/list.h"
+//#include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
 int exec_process(char *file_name);
@@ -29,13 +30,17 @@ int syscall_write(struct intr_frame *f);
 void syscall_seek(struct intr_frame *f);
 int syscall_tell(struct intr_frame *f);
 void syscall_close(struct intr_frame *f);
+void syscall_halt(void);
+
 
 
 void pop_stack(int *esp, int *a, int offset){
 	int *tmp_esp = esp;
 	*a = *((int *)is_valid_addr(tmp_esp + offset));
 }
-
+void syscall_halt(void){
+	shutdown_power_off();
+}
 void
 syscall_init (void)
 {
@@ -51,7 +56,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	int system_call = *p;
 	switch (system_call)
 	{
-		case SYS_HALT: shutdown_power_off(); break;
+		case SYS_HALT: syscall_halt(); break;
 		case SYS_EXIT: syscall_exit(f); break;
 		case SYS_EXEC: f->eax = syscall_exec(f); break;
 		case SYS_WAIT: f->eax = syscall_wait(f); break;
@@ -81,7 +86,7 @@ exec_process(char *file_name)
 	char *tmp_ptr;
 	name_tmp = strtok_r(name_tmp, " ", &tmp_ptr);
 
-	struct file *f = filesys_open(name_tmp);
+	struct file *f = filesys_open(name_tmp);  // check whether the file exists. critical to test case "exec-missing"
 
 	if (f == NULL)
 	{

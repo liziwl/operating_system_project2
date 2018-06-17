@@ -161,7 +161,7 @@ process_exit (void)
   if (lock_held_by_current_thread(&filesys_lock))
   {
     //printf("release_filesys_lock\n"); // for debug.
-    lock_release(&filesys_lock);;
+    lock_release(&filesys_lock);
   }
 
   // enum intr_level old_level = intr_disable();
