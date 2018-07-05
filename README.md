@@ -15,4 +15,4 @@ Project 2: User Program
 This SUSTech pintos project 2 is almost the same as its original ones in Stanford or Berkeley. But the simulator we use is Bochs instead of QEMU.
 
 ## Completeness
-PASS all test cases except multi-oom. We add 2 custom test case for user program. you can look for the detail in the report.
+PASS all test cases except multi-oom. We add 2 custom test case for user program. You can look for the detail in the report.
